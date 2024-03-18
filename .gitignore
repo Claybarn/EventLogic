@@ -1,0 +1,4 @@
+.eggs/
+dist/
+eventlogic.egg-info/
+*.pyc
