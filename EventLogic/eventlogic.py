@@ -23,16 +23,17 @@ class Event():
     def duration(self):
         return self.off-self.on
     @staticmethod
-    def _duration_filter(self,lower_bound,upper_bound):
+    def _duration_filter(lower_bound,upper_bound):
         if self.duration()>lower_bound and self.duration < upper_bound:
             return True
         else:
             return False
-    def _check_inputs(self,on,off):
+    @staticmethod
+    def _check_inputs(on,off):
         if (on is None) and (off is None):
             pass
         elif not (np.isscalar(on) and np.isscalar(off)):
-            raise ValueError('Inputs must be scalar.')
+            raise ValueError('Inputs must be scalar or datetime64 type.')
         elif on > off:
             raise ValueError('on must be less than or equal to off')
     def exists(self):
@@ -68,7 +69,7 @@ class Event():
             new_timestamp = Event(None,None)
             new_timestamp.on = min(self.on,other.on)
             new_timestamp.off = max(self.off,other.off)
-            return [new_timestamp]  
+            return [new_timestamp]
     def __xor__(self,other):
         if self.not_intersect(other):
             return (self,other)
@@ -109,23 +110,27 @@ class Events():
                 return_str += ', '
             return_str += ' ... , '
             for i in range(3):
-                return_str += self.events[-i].__str__()     
+                return_str += self.events[-i].__str__()
                 return_str += ', '
         return return_str[:-2]
-    def _check_inputs(self,events):
-        self._are_events(events);
-        self._is_sorted_and_non_overlapping(events)
-    def _are_events(self,events):
+    @staticmethod
+    def _check_inputs(events):
+        Events._are_events(events);
+        Events._is_sorted_and_non_overlapping(events)
+    @staticmethod
+    def _are_events(events):
         assert isinstance(events,list)
         for it in range(len(events)):
             assert isinstance(events[0],Event)
-    def _is_sorted_and_non_overlapping(self,events):
+    @staticmethod
+    def _is_sorted_and_non_overlapping(events):
         on_off_vector = np.empty(2*len(events))
         for it in range(len(events)):
             on_off_vector[it*2] = events[it].on
             on_off_vector[it*2+1] = events[it].off
         assert np.all(on_off_vector[:-1] <= on_off_vector[1:])
-    def _check_vectors(self,ons,offs):
+    @staticmethod
+    def _check_vectors(ons,offs):
         assert hasattr(ons,'__iter__')
         assert hasattr(offs,'__iter__')
         assert len(ons) == len(offs)
@@ -159,7 +164,7 @@ class Events():
                 for it2, curr_other in enumerate(other):
                     intersect_matrix[it1,it2] = curr_self.intersect(other)
         return intersect_matrix
-    def __and__(self,other): 
+    def __and__(self,other):
         new_events = []
         for curr_self in self:
             for curr_other in other:
@@ -167,7 +172,7 @@ class Events():
                 if new_timestamp.exists():
                     new_events.append(new_timestamp)
         return new_events
-    def __or__(self,other): 
+    def __or__(self,other):
         new_events = []
         for curr_self in self:
              for curr_other in other:
@@ -175,7 +180,7 @@ class Events():
                  if new_timestamp.exists():
                      new_events.append(new_timestamp)
         return new_events
-    def __xor__(self,other): 
+    def __xor__(self,other):
         new_events = []
         for curr_self in self:
              for curr_other in other:
@@ -189,7 +194,7 @@ class Events():
         new_ons = np.insert(offs,0,np.NINF)
         new_offs = np.append(ons,np.inf)
         new_events = Events(Event(None,None))
-        new_events.from_vectors(new_ons,new_offs)
+        new_events.from_arrays(new_ons,new_offs)
         return new_events
     def _unravel_events(self):
         ons = np.empty(len(self))
@@ -198,13 +203,14 @@ class Events():
             ons[it] = timestamp.on
             offs[it] = timestamp.off
         return ons, offs
-    def from_vectors(self,ons,offs):
-        self._check_vectors(ons,offs)
+    @classmethod
+    def from_arrays(cls,ons,offs):
+        Events._check_vectors(ons,offs)
         events = []
         for times in zip(ons,offs):
             events.append(Event(times[0],times[1]))
-        self._check_inputs(events)
-        self.events = events
+        Events._check_inputs(events)
+        return cls(events)
     def merge(self,threshold):
         ons, offs = self._unravel_events()
         merge_mask = (ons[1:]-offs[:-1])<threshold
@@ -221,11 +227,11 @@ class Events():
               it += 1
               new_ons[it] = ons[i+1]
               new_offs[it] = offs[i+1]
-        self.from_vectors(new_ons,new_offs)
+        return Events.from_arrays(new_ons,new_offs)
     def duration_filter(self,lower_bound=0,upper_bound=np.inf):
         return filter(Event._duration_filter(lower_bound,upper_bound),self.events)
-                
-            
+
+
 
 class EventsIterator():
     def __init__(self,events):
@@ -238,13 +244,3 @@ class EventsIterator():
             return result
         else:
             raise StopIteration
-            
-
-def events_from_vectors(ons,offs):
-    events = Events(Event(1,2))
-    events.from_vectors(ons,offs)
-    return events
-
-
-
-
