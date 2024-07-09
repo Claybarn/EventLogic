@@ -14,15 +14,15 @@ pip install eventlogic
 #### There are 9 flavors of event interactions:
 | Case | Events |
 | ------ | ------ |
-| 1 |  [Case 1 Image](docs/case1.png?raw=true) |
-| 2 |  [Case 2 Image](docs/case2.png?raw=true) |
-| 3 |  [Case 3 Image](docs/case3.png?raw=true) |
-| 4 |  [Case 4 Image](docs/case4.png?raw=true) |
-| 5 |  [Case 5 Image](docs/case5.png?raw=true) |
-| 6 |  [Case 6 Image](docs/case6.png?raw=true) |
-| 7 |  [Case 7 Image](docs/case7.png?raw=true) |
-| 8 |  [Case 8 Image](docs/case8.png?raw=true) |
-| 9 |  [Case 9 Image](docs/case9.png?raw=true) | 
+| 1 |  ![Case 1 Image](docs/case1.png?raw=true) |
+| 2 |  ![Case 2 Image](docs/case2.png?raw=true) |
+| 3 |  ![Case 3 Image](docs/case3.png?raw=true) |
+| 4 |  ![Case 4 Image](docs/case4.png?raw=true) |
+| 5 |  ![Case 5 Image](docs/case5.png?raw=true) |
+| 6 |  ![Case 6 Image](docs/case6.png?raw=true) |
+| 7 |  ![Case 7 Image](docs/case7.png?raw=true) |
+| 8 |  ![Case 8 Image](docs/case8.png?raw=true) |
+| 9 |  ![Case 9 Image](docs/case9.png?raw=true) | 
 
 # Usage
 The Event class represents an event with a start (on) and end (off) time. It supports various logical operations:
