@@ -3,3 +3,4 @@ dist/
 eventlogic.egg-info/
 *.pyc
 .DS_Store
+token.txt

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eventlogic"
-version = "0.1.5"
+version = "0.1.11"
 dependencies = [
     "numpy",
     'importlib-metadata; python_version>="3.6"',

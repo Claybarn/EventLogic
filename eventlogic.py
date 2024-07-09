@@ -6,6 +6,9 @@ Created on Mon Oct  3 13:52:30 2022
 
 EVENT LOGIC
 
+TODO:
+add copy method to events
+
 """
 
 import numpy as np
@@ -17,7 +20,7 @@ class Event():
         self.on = on
         self.off = off
     def __repr__(self):
-        return '('+str(self.on)+','+str(self.off)+')'
+        return 'Event(on='+str(self.on)+', off='+str(self.off)+')'
     #def __str__(self):
     #    return '('+str(self.on)+','+str(self.off)+')'
     def duration(self):
@@ -124,11 +127,15 @@ class Events():
             assert isinstance(events[0],Event)
     @staticmethod
     def _is_sorted_and_non_overlapping(events):
+        #ons,offs = events._unravel_events()
+        ons = np.empty(len(events))
+        offs = np.empty(len(events))
         on_off_vector = np.empty(2*len(events))
-        for it in range(len(events)):
-            on_off_vector[it*2] = events[it].on
-            on_off_vector[it*2+1] = events[it].off
-        assert np.all(on_off_vector[:-1] <= on_off_vector[1:])
+        for it,e in enumerate(events):
+            ons[it] = e.on
+            offs[it] = e.off
+        #assert np.all(on_off_vector[:-1] <= on_off_vector[1:])
+        assert np.all(ons[:-1] <= ons[1:]) and np.all(offs[:-1] <= offs[1:])
     @staticmethod
     def _check_vectors(ons,offs):
         assert hasattr(ons,'__iter__')
@@ -162,7 +169,7 @@ class Events():
         intersect_matrix = np.empty((len(self),len(other)),dtype=bool)
         for it1, curr_self in enumerate(self):
                 for it2, curr_other in enumerate(other):
-                    intersect_matrix[it1,it2] = curr_self.intersect(other)
+                    intersect_matrix[it1,it2] = curr_self.intersect(curr_other)
         return intersect_matrix
     def __and__(self,other):
         new_events = []
@@ -197,12 +204,15 @@ class Events():
         new_events.from_arrays(new_ons,new_offs)
         return new_events
     def _unravel_events(self):
-        ons = np.empty(len(self))
-        offs = np.empty_like(ons)
-        for it,timestamp in enumerate(self):
-            ons[it] = timestamp.on
-            offs[it] = timestamp.off
-        return ons, offs
+        if self.events:
+            ons = np.empty(len(self),dtype=self.events[0].on)
+            offs = np.empty_like(ons)
+            for it,timestamp in enumerate(self):
+                ons[it] = timestamp.on
+                offs[it] = timestamp.off
+            return ons, offs
+        else:
+            return None,None
     @classmethod
     def from_arrays(cls,ons,offs):
         Events._check_vectors(ons,offs)
