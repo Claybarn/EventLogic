@@ -22,7 +22,7 @@ pip install eventlogic
 | 6 |  ![Case 6 Image](docs/case6.png?raw=true) |
 | 7 |  ![Case 7 Image](docs/case7.png?raw=true) |
 | 8 |  ![Case 8 Image](docs/case8.png?raw=true) |
-| 9 |  ![Case 9 Image](docs/case9.png?raw=true) | 
+| 9 |  ![Case 9 Image](docs/case9.png?raw=true) |
 
 # Usage
 The Event class represents an event with a start (on) and end (off) time. It supports various logical operations:
@@ -70,8 +70,8 @@ a < b # False
 from eventlogic import Event
 a = Event(3,4)
 b = Event(2,5)
-a in b
-a not in b
+a in b # True
+a not in b # False
 ```
 
 
@@ -82,15 +82,15 @@ event2 = Event(on=4, off=6)
 ```
 ### Intersection
 ```
-intersection = event1 & event2  # Returns Event(on=4, off=5)
+intersection = event1 & event2  # Returns (4,5)
 ```
 ### Union
 ```
-union = event1 | event2  # Returns Event(on=1, off=6)
+union = event1 | event2  # Returns [(1,6)]
 ```
 #### xor
 ```
-sym_diff = event1 ^ event2  # Returns (Event(on=1, off=4), Event(on=5, off=6))
+xor = event1 ^ event2  # Returns ((1,4), (5,6))
 ```
 
 # Working with `numpy.datetime64`
