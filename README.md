@@ -34,30 +34,29 @@ The Event class represents an event with a start (on) and end (off) time. It sup
 | Containment| in, not in |
 
 ## Creating an Event
-```
+```python
 from eventlogic import Event
 event = Event(on=1, off=5)
 ```
 
 ## Event Duration
-```
+```python
 duration = event.duration()  # Returns the duration of the event
 ```
 
 ## Copying an Event
-```
+```python
 event_copy = event.copy()
 ```
 
 ## Event Existence
-```
+```python
 exists = event.exists()  # Checks if the event is defined
 ```
 
 ## Comparison Operators
-
-### If we look at case 1:
-```
+If we look at case 1:
+```python
 from eventlogic import Event
 a = Event(3,4)
 b = Event(1,2)
@@ -65,8 +64,26 @@ a > b # True
 a < b # False
 ```
 
-### If we look at case 9:
+## Logical Operations
+```python
+event1 = Event(on=1, off=5)
+event2 = Event(on=4, off=6)
 ```
+### Intersection
+```python
+intersection = event1 & event2  # Returns (4,5)
+```
+### Union
+```python
+union = event1 | event2  # Returns [(1,6)]
+```
+#### xor
+```python
+xor = event1 ^ event2  # Returns ((1,4), (5,6))
+```
+## Containment Operators
+If we look at case 9:
+```python
 from eventlogic import Event
 a = Event(3,4)
 b = Event(2,5)
@@ -74,27 +91,8 @@ a in b # True
 a not in b # False
 ```
 
-
-## Logical Operations
-```
-event1 = Event(on=1, off=5)
-event2 = Event(on=4, off=6)
-```
-### Intersection
-```
-intersection = event1 & event2  # Returns (4,5)
-```
-### Union
-```
-union = event1 | event2  # Returns [(1,6)]
-```
-#### xor
-```
-xor = event1 ^ event2  # Returns ((1,4), (5,6))
-```
-
 # Working with `numpy.datetime64`
-```
+```python
 import numpy as np
 from eventlogic import Event
 
@@ -108,14 +106,14 @@ print(a < b)  # False
 ```
 # Event Container
 The `Events` class allows for handling multiple events at once.
-```
+```python
 from eventlogic import Event, Events
 events = Events([Event(1, 2), Event(3, 4), Event(5, 6)])
 print(len(events))  # 3
 print(events)  # [(1,2), (3,4), (5,6)]
 ```
 And importantly, the creation of `Events` from numpy arrays (including datetime!).
-```
+```python
 import numpy as np
 from eventlogic import Events
 
@@ -127,13 +125,13 @@ print(events)  # [(1,2), (3,4), (5,6)]
 ```
 
 # Merging Events
-```
+```python
 merged_events = events.merge(threshold=0.5)
 print(merged_events)
 ```
 
 # Filtering Events by Duration
-```
+```python
 filtered_events = events.duration_filter(lower_bound=0.5, upper_bound=2.0)
 print(filtered_events)
 ```
