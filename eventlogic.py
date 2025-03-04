@@ -112,30 +112,28 @@ class Events():
                 return_str += self.events[i].__str__()
                 return_str += ', '
             return_str += ' ... , '
-            for i in range(3):
-                return_str += self.events[-i].__str__()
+            for i in range(-3,0):
+                return_str += self.events[i].__str__()
                 return_str += ', '
         return return_str[:-2]
     @staticmethod
     def _check_inputs(events):
         Events._are_events(events);
-        Events._is_sorted_and_non_overlapping(events)
+        Events._ons_are_sorted(events)
     @staticmethod
     def _are_events(events):
         assert isinstance(events,list)
         for it in range(len(events)):
             assert isinstance(events[0],Event)
     @staticmethod
-    def _is_sorted_and_non_overlapping(events):
-        #ons,offs = events._unravel_events()
+    def _ons_are_sorted(events):
         ons = np.empty(len(events))
         offs = np.empty(len(events))
         on_off_vector = np.empty(2*len(events))
         for it,e in enumerate(events):
             ons[it] = e.on
             offs[it] = e.off
-        #assert np.all(on_off_vector[:-1] <= on_off_vector[1:])
-        assert np.all(ons[:-1] <= ons[1:]) and np.all(offs[:-1] <= offs[1:])
+        assert np.all(ons[:-1] <= ons[1:])
     @staticmethod
     def _check_vectors(ons,offs):
         assert hasattr(ons,'__iter__')
@@ -196,6 +194,27 @@ class Events():
                      if new_timestamp.exists():
                          new_events.append(new_timestamp)
         return new_events
+    def __contains__(self, other):
+        # For single Event objects, check if it's contained in any event in self
+        if isinstance(other, Event):
+            for self_event in self:
+                if other in self_event:
+                    return True
+            return False
+        else:
+            raise TypeError("Use contains_events() for checking multiple events")
+
+    def contains_events(self, other):
+        """Returns boolean array indicating which events in other are contained in self"""
+        if not isinstance(other, Events):
+            raise TypeError("contains_events() expects an Events object")
+        results = np.zeros(len(other), dtype=bool)
+        for i, other_event in enumerate(other):
+            for self_event in self:
+                if other_event in self_event:
+                    results[i] = True
+                    break
+        return results
     def __invert__(self):
         ons,offs = self._unravel_events()
         new_ons = np.insert(offs,0,np.NINF)

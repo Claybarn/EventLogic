@@ -4,3 +4,4 @@ eventlogic.egg-info/
 *.pyc
 .DS_Store
 token.txt
+reminder.txt
