@@ -9,6 +9,52 @@ pip install --upgrade pip
 pip install eventlogic
 ```
 
+# Common Usage
+The most common way to use EventLogic is through the `Events` class, which handles multiple events simultaneously.
+
+## Creating Events
+```python
+from eventlogic import Event, Events
+
+#Create from list of events
+events1 = Events([Event(1.0, 2.5), Event(2.9, 3.0), Event(5.0, 7.0)])
+
+# Create directly from numpy arrays (recommended)
+import numpy as np
+ons = np.array([1, 3, 5])
+offs = np.array([2, 4, 6])
+events2 = Events.from_arrays(ons, offs)
+
+# creating from datetime arrays
+dates_on = np.array(['2023-01-01', '2023-01-02'], dtype='datetime64[D]')
+dates_off = np.array(['2023-01-02', '2023-01-03'], dtype='datetime64[D]')
+datetime_events = Events.from_arrays(dates_on, dates_off)
+```
+
+## Logical Operations
+```python
+#Intersection (find overlapping periods)
+intersection = events1 & events2
+print(intersection) # Shows all overlapping time periods
+
+#Union (combine events, merging overlaps)
+union = events1 | events2
+print(union) # Shows combined events with overlaps merged
+
+#Check if events are contained within other events
+events1 = Events([Event(1, 5), Event(7, 10)])
+events2 = Events([Event(2, 4), Event(8, 9)])
+contained = events1.contains_events(events2) # Returns boolean array
+```
+
+## Merging & Filtering
+```python
+#Merge events that are close together
+merged = events1.merge(threshold=5) # Merges events less than 5 units apart
+
+#Filter events by duration
+filtered = events1.duration_filter(lower_bound=0.5, upper_bound=2.0)
+```
 # Examples
 
 #### There are 9 flavors of event interactions:

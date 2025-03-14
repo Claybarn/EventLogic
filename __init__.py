@@ -1,1 +1,4 @@
-import eventlogic
+from .eventlogic import (
+    Event,
+    Events
+)
