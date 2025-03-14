@@ -22,6 +22,42 @@ class Event():
         self._check_inputs(on,off)
         self.on = on
         self.off = off
+        self._type_bounds = {
+            # Integer types
+            np.dtype('int8'): (np.iinfo(np.int8).min, np.iinfo(np.int8).max),
+            np.dtype('int16'): (np.iinfo(np.int16).min, np.iinfo(np.int16).max),
+            np.dtype('int32'): (np.iinfo(np.int32).min, np.iinfo(np.int32).max),
+            np.dtype('int64'): (np.iinfo(np.int64).min, np.iinfo(np.int64).max),
+            np.dtype('uint8'): (np.iinfo(np.uint8).min, np.iinfo(np.uint8).max),
+            np.dtype('uint16'): (np.iinfo(np.uint16).min, np.iinfo(np.uint16).max),
+            np.dtype('uint32'): (np.iinfo(np.uint32).min, np.iinfo(np.uint32).max),
+            np.dtype('uint64'): (np.iinfo(np.uint64).min, np.iinfo(np.uint64).max),
+            
+            # Float types
+            np.dtype('float32'): (np.NINF, np.inf),
+            np.dtype('float64'): (np.NINF, np.inf),
+            
+            # Datetime64 types - all share same bounds but with different units
+            np.dtype('datetime64[Y]'): (np.datetime64('1677', 'Y'), np.datetime64('2262', 'Y')),
+            np.dtype('datetime64[M]'): (np.datetime64('1677-09', 'M'), np.datetime64('2262-04', 'M')),
+            np.dtype('datetime64[W]'): (np.datetime64('1677-09-21', 'W'), np.datetime64('2262-04-11', 'W')),
+            np.dtype('datetime64[D]'): (np.datetime64('1677-09-21', 'D'), np.datetime64('2262-04-11', 'D')),
+            np.dtype('datetime64[h]'): (np.datetime64('1677-09-21T00', 'h'), np.datetime64('2262-04-11T23', 'h')),
+            np.dtype('datetime64[m]'): (np.datetime64('1677-09-21T00:12', 'm'), np.datetime64('2262-04-11T23:47', 'm')),
+            np.dtype('datetime64[s]'): (np.datetime64('1677-09-21T00:12:43', 's'), np.datetime64('2262-04-11T23:47:16', 's')),
+            np.dtype('datetime64[ms]'): (np.datetime64('1677-09-21T00:12:43.145', 'ms'), np.datetime64('2262-04-11T23:47:16.854', 'ms')),
+            np.dtype('datetime64[us]'): (np.datetime64('1677-09-21T00:12:43.145224', 'us'), np.datetime64('2262-04-11T23:47:16.854775', 'us')),
+            np.dtype('datetime64[ns]'): (np.datetime64('1677-09-21T00:12:43.145224192', 'ns'), np.datetime64('2262-04-11T23:47:16.854775807', 'ns')),
+            
+            # Timedelta64 types
+            np.dtype('timedelta64[ns]'): (np.timedelta64(-2**63+1, 'ns'), np.timedelta64(2**63-1, 'ns')),
+            np.dtype('timedelta64[us]'): (np.timedelta64(-2**63+1, 'us'), np.timedelta64(2**63-1, 'us')),
+            np.dtype('timedelta64[ms]'): (np.timedelta64(-2**63+1, 'ms'), np.timedelta64(2**63-1, 'ms')),
+            np.dtype('timedelta64[s]'): (np.timedelta64(-2**63+1, 's'), np.timedelta64(2**63-1, 's')),
+            np.dtype('timedelta64[m]'): (np.timedelta64(-2**63+1, 'm'), np.timedelta64(2**63-1, 'm')),
+            np.dtype('timedelta64[h]'): (np.timedelta64(-2**63+1, 'h'), np.timedelta64(2**63-1, 'h')),
+            np.dtype('timedelta64[D]'): (np.timedelta64(-2**63+1, 'D'), np.timedelta64(2**63-1, 'D')),
+        }
     def __repr__(self):
         return 'Event(on='+str(self.on)+', off='+str(self.off)+')'
     #def __str__(self):
@@ -382,14 +418,16 @@ class Events():
         else:
             raise TypeError("Use contains_events() for checking multiple events")
     def contains_events(self, other):
-        """Returns boolean array indicating which events in other are contained in self"""
+        """Returns boolean array indicating which events in other are contained in self (nlog(n))"""
         if not isinstance(other, Events):
             raise TypeError("contains_events() expects an Events object")
         results = np.zeros(len(other), dtype=bool)
+        last_index = 0
         for i, other_event in enumerate(other):
-            for self_event in self:
+            for j,self_event in enumerate(self[last_index:]):
                 if other_event in self_event:
                     results[i] = True
+                    last_index+=j
                     break
         return results
     def __invert__(self):
