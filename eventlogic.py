@@ -12,52 +12,59 @@ add copy method to events
 """
 
 import numpy as np
-import operator
 
 
+# Module-level dtype bounds table. Built once at import time rather than once
+# per Event/Events instance, which previously dominated construction cost.
+_NEG_INF = -np.inf
+_POS_INF = np.inf
+_TYPE_BOUNDS = {
+    # Integer types
+    np.dtype('int8'): (np.iinfo(np.int8).min, np.iinfo(np.int8).max),
+    np.dtype('int16'): (np.iinfo(np.int16).min, np.iinfo(np.int16).max),
+    np.dtype('int32'): (np.iinfo(np.int32).min, np.iinfo(np.int32).max),
+    np.dtype('int64'): (np.iinfo(np.int64).min, np.iinfo(np.int64).max),
+    np.dtype('uint8'): (np.iinfo(np.uint8).min, np.iinfo(np.uint8).max),
+    np.dtype('uint16'): (np.iinfo(np.uint16).min, np.iinfo(np.uint16).max),
+    np.dtype('uint32'): (np.iinfo(np.uint32).min, np.iinfo(np.uint32).max),
+    np.dtype('uint64'): (np.iinfo(np.uint64).min, np.iinfo(np.uint64).max),
+
+    # Float types
+    np.dtype('float32'): (_NEG_INF, _POS_INF),
+    np.dtype('float64'): (_NEG_INF, _POS_INF),
+
+    # Datetime64 types - all share same bounds but with different units
+    np.dtype('datetime64[Y]'): (np.datetime64('1677', 'Y'), np.datetime64('2262', 'Y')),
+    np.dtype('datetime64[M]'): (np.datetime64('1677-09', 'M'), np.datetime64('2262-04', 'M')),
+    np.dtype('datetime64[W]'): (np.datetime64('1677-09-21', 'W'), np.datetime64('2262-04-11', 'W')),
+    np.dtype('datetime64[D]'): (np.datetime64('1677-09-21', 'D'), np.datetime64('2262-04-11', 'D')),
+    np.dtype('datetime64[h]'): (np.datetime64('1677-09-21T00', 'h'), np.datetime64('2262-04-11T23', 'h')),
+    np.dtype('datetime64[m]'): (np.datetime64('1677-09-21T00:12', 'm'), np.datetime64('2262-04-11T23:47', 'm')),
+    np.dtype('datetime64[s]'): (np.datetime64('1677-09-21T00:12:43', 's'), np.datetime64('2262-04-11T23:47:16', 's')),
+    np.dtype('datetime64[ms]'): (np.datetime64('1677-09-21T00:12:43.145', 'ms'), np.datetime64('2262-04-11T23:47:16.854', 'ms')),
+    np.dtype('datetime64[us]'): (np.datetime64('1677-09-21T00:12:43.145224', 'us'), np.datetime64('2262-04-11T23:47:16.854775', 'us')),
+    np.dtype('datetime64[ns]'): (np.datetime64('1677-09-21T00:12:43.145224192', 'ns'), np.datetime64('2262-04-11T23:47:16.854775807', 'ns')),
+
+    # Timedelta64 types
+    np.dtype('timedelta64[ns]'): (np.timedelta64(-2**63 + 1, 'ns'), np.timedelta64(2**63 - 1, 'ns')),
+    np.dtype('timedelta64[us]'): (np.timedelta64(-2**63 + 1, 'us'), np.timedelta64(2**63 - 1, 'us')),
+    np.dtype('timedelta64[ms]'): (np.timedelta64(-2**63 + 1, 'ms'), np.timedelta64(2**63 - 1, 'ms')),
+    np.dtype('timedelta64[s]'): (np.timedelta64(-2**63 + 1, 's'), np.timedelta64(2**63 - 1, 's')),
+    np.dtype('timedelta64[m]'): (np.timedelta64(-2**63 + 1, 'm'), np.timedelta64(2**63 - 1, 'm')),
+    np.dtype('timedelta64[h]'): (np.timedelta64(-2**63 + 1, 'h'), np.timedelta64(2**63 - 1, 'h')),
+    np.dtype('timedelta64[D]'): (np.timedelta64(-2**63 + 1, 'D'), np.timedelta64(2**63 - 1, 'D')),
+}
 
 
 class Event():
-    def __init__(self,on,off):
-        self._check_inputs(on,off)
+    # Class-level alias preserves backward compatibility for any external code
+    # that read `event._type_bounds`.
+    _type_bounds = _TYPE_BOUNDS
+
+    def __init__(self, on, off):
+        self._check_inputs(on, off)
         self.on = on
         self.off = off
-        self._type_bounds = {
-            # Integer types
-            np.dtype('int8'): (np.iinfo(np.int8).min, np.iinfo(np.int8).max),
-            np.dtype('int16'): (np.iinfo(np.int16).min, np.iinfo(np.int16).max),
-            np.dtype('int32'): (np.iinfo(np.int32).min, np.iinfo(np.int32).max),
-            np.dtype('int64'): (np.iinfo(np.int64).min, np.iinfo(np.int64).max),
-            np.dtype('uint8'): (np.iinfo(np.uint8).min, np.iinfo(np.uint8).max),
-            np.dtype('uint16'): (np.iinfo(np.uint16).min, np.iinfo(np.uint16).max),
-            np.dtype('uint32'): (np.iinfo(np.uint32).min, np.iinfo(np.uint32).max),
-            np.dtype('uint64'): (np.iinfo(np.uint64).min, np.iinfo(np.uint64).max),
-            
-            # Float types
-            np.dtype('float32'): (np.NINF, np.inf),
-            np.dtype('float64'): (np.NINF, np.inf),
-            
-            # Datetime64 types - all share same bounds but with different units
-            np.dtype('datetime64[Y]'): (np.datetime64('1677', 'Y'), np.datetime64('2262', 'Y')),
-            np.dtype('datetime64[M]'): (np.datetime64('1677-09', 'M'), np.datetime64('2262-04', 'M')),
-            np.dtype('datetime64[W]'): (np.datetime64('1677-09-21', 'W'), np.datetime64('2262-04-11', 'W')),
-            np.dtype('datetime64[D]'): (np.datetime64('1677-09-21', 'D'), np.datetime64('2262-04-11', 'D')),
-            np.dtype('datetime64[h]'): (np.datetime64('1677-09-21T00', 'h'), np.datetime64('2262-04-11T23', 'h')),
-            np.dtype('datetime64[m]'): (np.datetime64('1677-09-21T00:12', 'm'), np.datetime64('2262-04-11T23:47', 'm')),
-            np.dtype('datetime64[s]'): (np.datetime64('1677-09-21T00:12:43', 's'), np.datetime64('2262-04-11T23:47:16', 's')),
-            np.dtype('datetime64[ms]'): (np.datetime64('1677-09-21T00:12:43.145', 'ms'), np.datetime64('2262-04-11T23:47:16.854', 'ms')),
-            np.dtype('datetime64[us]'): (np.datetime64('1677-09-21T00:12:43.145224', 'us'), np.datetime64('2262-04-11T23:47:16.854775', 'us')),
-            np.dtype('datetime64[ns]'): (np.datetime64('1677-09-21T00:12:43.145224192', 'ns'), np.datetime64('2262-04-11T23:47:16.854775807', 'ns')),
-            
-            # Timedelta64 types
-            np.dtype('timedelta64[ns]'): (np.timedelta64(-2**63+1, 'ns'), np.timedelta64(2**63-1, 'ns')),
-            np.dtype('timedelta64[us]'): (np.timedelta64(-2**63+1, 'us'), np.timedelta64(2**63-1, 'us')),
-            np.dtype('timedelta64[ms]'): (np.timedelta64(-2**63+1, 'ms'), np.timedelta64(2**63-1, 'ms')),
-            np.dtype('timedelta64[s]'): (np.timedelta64(-2**63+1, 's'), np.timedelta64(2**63-1, 's')),
-            np.dtype('timedelta64[m]'): (np.timedelta64(-2**63+1, 'm'), np.timedelta64(2**63-1, 'm')),
-            np.dtype('timedelta64[h]'): (np.timedelta64(-2**63+1, 'h'), np.timedelta64(2**63-1, 'h')),
-            np.dtype('timedelta64[D]'): (np.timedelta64(-2**63+1, 'D'), np.timedelta64(2**63-1, 'D')),
-        }
     def __repr__(self):
         return 'Event(on='+str(self.on)+', off='+str(self.off)+')'
     #def __str__(self):
@@ -129,7 +136,7 @@ class Event():
             return Events([Event(None, None)])
         dtype = np.array(on).dtype
         # get bounds to handle non float types 
-        min_val, max_val = self._type_bounds.get(dtype, (np.NINF, np.inf))
+        min_val, max_val = self._type_bounds.get(dtype, (_NEG_INF, _POS_INF))
         # handle circumstances where min and max are extremes
         # allows e==~(~e)
         min_on = True if on == min_val else False
@@ -157,48 +164,16 @@ class Event():
 
 
 class Events():
-    def __init__(self,events):
-        if (type(events) == list):
+    def __init__(self, events, _presorted=False):
+        if isinstance(events, list):
             self.events = events
         else:
             self.events = [events]
-        self._check_inputs(self.events)
-        self._type_bounds = {
-            # Integer types
-            np.dtype('int8'): (np.iinfo(np.int8).min, np.iinfo(np.int8).max),
-            np.dtype('int16'): (np.iinfo(np.int16).min, np.iinfo(np.int16).max),
-            np.dtype('int32'): (np.iinfo(np.int32).min, np.iinfo(np.int32).max),
-            np.dtype('int64'): (np.iinfo(np.int64).min, np.iinfo(np.int64).max),
-            np.dtype('uint8'): (np.iinfo(np.uint8).min, np.iinfo(np.uint8).max),
-            np.dtype('uint16'): (np.iinfo(np.uint16).min, np.iinfo(np.uint16).max),
-            np.dtype('uint32'): (np.iinfo(np.uint32).min, np.iinfo(np.uint32).max),
-            np.dtype('uint64'): (np.iinfo(np.uint64).min, np.iinfo(np.uint64).max),
-            
-            # Float types
-            np.dtype('float32'): (np.NINF, np.inf),
-            np.dtype('float64'): (np.NINF, np.inf),
-            
-            # Datetime64 types - all share same bounds but with different units
-            np.dtype('datetime64[Y]'): (np.datetime64('1677', 'Y'), np.datetime64('2262', 'Y')),
-            np.dtype('datetime64[M]'): (np.datetime64('1677-09', 'M'), np.datetime64('2262-04', 'M')),
-            np.dtype('datetime64[W]'): (np.datetime64('1677-09-21', 'W'), np.datetime64('2262-04-11', 'W')),
-            np.dtype('datetime64[D]'): (np.datetime64('1677-09-21', 'D'), np.datetime64('2262-04-11', 'D')),
-            np.dtype('datetime64[h]'): (np.datetime64('1677-09-21T00', 'h'), np.datetime64('2262-04-11T23', 'h')),
-            np.dtype('datetime64[m]'): (np.datetime64('1677-09-21T00:12', 'm'), np.datetime64('2262-04-11T23:47', 'm')),
-            np.dtype('datetime64[s]'): (np.datetime64('1677-09-21T00:12:43', 's'), np.datetime64('2262-04-11T23:47:16', 's')),
-            np.dtype('datetime64[ms]'): (np.datetime64('1677-09-21T00:12:43.145', 'ms'), np.datetime64('2262-04-11T23:47:16.854', 'ms')),
-            np.dtype('datetime64[us]'): (np.datetime64('1677-09-21T00:12:43.145224', 'us'), np.datetime64('2262-04-11T23:47:16.854775', 'us')),
-            np.dtype('datetime64[ns]'): (np.datetime64('1677-09-21T00:12:43.145224192', 'ns'), np.datetime64('2262-04-11T23:47:16.854775807', 'ns')),
-            
-            # Timedelta64 types
-            np.dtype('timedelta64[ns]'): (np.timedelta64(-2**63+1, 'ns'), np.timedelta64(2**63-1, 'ns')),
-            np.dtype('timedelta64[us]'): (np.timedelta64(-2**63+1, 'us'), np.timedelta64(2**63-1, 'us')),
-            np.dtype('timedelta64[ms]'): (np.timedelta64(-2**63+1, 'ms'), np.timedelta64(2**63-1, 'ms')),
-            np.dtype('timedelta64[s]'): (np.timedelta64(-2**63+1, 's'), np.timedelta64(2**63-1, 's')),
-            np.dtype('timedelta64[m]'): (np.timedelta64(-2**63+1, 'm'), np.timedelta64(2**63-1, 'm')),
-            np.dtype('timedelta64[h]'): (np.timedelta64(-2**63+1, 'h'), np.timedelta64(2**63-1, 'h')),
-            np.dtype('timedelta64[D]'): (np.timedelta64(-2**63+1, 'D'), np.timedelta64(2**63-1, 'D')),
-        }
+        self._check_inputs(self.events, _presorted=_presorted)
+
+    # Class-level alias of the shared dtype bounds table; same object for every
+    # instance so construction is O(1).
+    _type_bounds = _TYPE_BOUNDS
     def __len__(self):
         return len(self.events)
     def __iter__(self):
@@ -221,163 +196,185 @@ class Events():
                 return_str += ', '
         return return_str[:-2]
     @staticmethod
-    def _check_inputs(events):
-        Events._are_events(events);
-        Events._ons_are_sorted_same_dtype(events)
+    def _check_inputs(events, _presorted=False):
+        Events._are_events(events)
+        if not _presorted:
+            Events._ons_are_sorted_same_dtype(events)
     @staticmethod
     def _are_events(events):
-        assert isinstance(events,list)
-        for it in range(len(events)):
-            assert isinstance(events[0],Event)
+        assert isinstance(events, list)
+        for e in events:
+            assert isinstance(e, Event)
     @staticmethod
     def _ons_are_sorted_same_dtype(events):
-        if len(events)>0:
-            ons = np.empty(len(events))
-            offs = np.empty(len(events))
+        if len(events) == 0:
+            return
+        ons = np.array([e.on for e in events])
+        offs = np.array([e.off for e in events])
+        # Mixed-dtype detection: a heterogeneous list yields an object-dtype array.
+        if ons.dtype == object or offs.dtype == object or ons.dtype != offs.dtype:
             dtype = type(events[0].on)
-            # relaxed definition for non overlapping for some applications, but might be better to have different event classes for the different definitions
-            #on_off_vector = np.empty(2*len(events))
-            for it,e in enumerate(events):
-                ons[it] = e.on
-                offs[it] = e.off
-                if type(e.on) != dtype or type(e.off) != dtype:
-                    raise TypeError(f"All events must be of the same data type. Observed types: {dtype}, {type(e.on)}, {type(e.off)}")
-            if not np.all(ons[:-1] <= ons[1:]):
-                raise TypeError("All events must be sorted")
+            for e in events:
+                if type(e.on) is not dtype or type(e.off) is not dtype:
+                    raise TypeError(
+                        f"All events must be of the same data type. "
+                        f"Observed types: {dtype}, {type(e.on)}, {type(e.off)}"
+                    )
+        if len(ons) > 1 and not np.all(ons[:-1] <= ons[1:]):
+            raise TypeError("All events must be sorted")
     @staticmethod
-    def _check_vectors(ons,offs):
-        assert hasattr(ons,'__iter__')
-        assert hasattr(offs,'__iter__')
+    def _check_vectors(ons, offs):
+        assert hasattr(ons, '__iter__')
+        assert hasattr(offs, '__iter__')
         assert len(ons) == len(offs)
-    def _generic_O_of_N2(self,other,operator_function):
-        matrix = np.empty((len(self),len(other)),dtype=bool)
-        for it1, curr_self in enumerate(self):
-                for it2, curr_other in enumerate(other):
-                    matrix[it1,it2] = operator_function(curr_self,curr_other)
-        return matrix
-    def __lt__(self,other):
-        return self._generic_O_of_N2(other,operator.lt)
-    def __le__(self,other):
-        return self._generic_O_of_N2(other,operator.le)
-    def __gt__(self,other):
-        return self._generic_O_of_N2(other,operator.gt)
-    def __ge__(self,other):
-        return self._generic_O_of_N2(other,operator.ge)
-    def __eq__(self,other):
-        return self._generic_O_of_N2(other,operator.eq)
-    def __ne__(self,other):
-        return self._generic_O_of_N2(other,operator.ne)
-    def not_intersect(self,other):
-        # nlog(n)
-        not_intersect_vector = np.zeros((len(self),),dtype=bool)
-        last_index = 0
-        for it, curr_self in enumerate(self):
-                for curr_other in other[last_index:]:
-                    if curr_self.not_intersect(curr_other):
-                        not_intersect_vector[it] = True
-                        last_index+=it
-                        break
-        return not_intersect_vector
-    def intersect(self,other):
-        # nlog(n)
-        intersect_vector = np.zeros((len(self),),dtype=bool)
-        last_index = 0
-        for it, curr_self in enumerate(self):
-                for curr_other in other[last_index:]:
-                    if curr_self.intersect(curr_other):
-                        intersect_vector[it] = True
-                        last_index+=it
-                        break
-        return intersect_vector
-    def __and__(self,other):
+
+    # ------------------------------------------------------------------
+    # Vectorized comparison operators.
+    # Output is intrinsically an (n x m) bool matrix so we cannot beat
+    # n*m memory, but we can improve over naive implementations with numpy
+    # broadcasting which is dramatically faster.
+    # ------------------------------------------------------------------
+    def _on_off_arrays(self):
+        return self._unravel_events()
+
+    def __lt__(self, other):
+        _, self_offs = self._on_off_arrays()
+        other_ons, _ = other._on_off_arrays()
+        if self_offs is None or other_ons is None:
+            return np.zeros((len(self), len(other)), dtype=bool)
+        return self_offs[:, None] < other_ons[None, :]
+    def __le__(self, other):
+        _, self_offs = self._on_off_arrays()
+        other_ons, _ = other._on_off_arrays()
+        if self_offs is None or other_ons is None:
+            return np.zeros((len(self), len(other)), dtype=bool)
+        return self_offs[:, None] <= other_ons[None, :]
+    def __gt__(self, other):
+        self_ons, _ = self._on_off_arrays()
+        _, other_offs = other._on_off_arrays()
+        if self_ons is None or other_offs is None:
+            return np.zeros((len(self), len(other)), dtype=bool)
+        return self_ons[:, None] > other_offs[None, :]
+    def __ge__(self, other):
+        self_ons, _ = self._on_off_arrays()
+        _, other_offs = other._on_off_arrays()
+        if self_ons is None or other_offs is None:
+            return np.zeros((len(self), len(other)), dtype=bool)
+        return self_ons[:, None] >= other_offs[None, :]
+    def __eq__(self, other):
+        self_ons, self_offs = self._on_off_arrays()
+        other_ons, other_offs = other._on_off_arrays()
+        if self_ons is None or other_ons is None:
+            return np.zeros((len(self), len(other)), dtype=bool)
+        return ((self_ons[:, None] == other_ons[None, :]) &
+                (self_offs[:, None] == other_offs[None, :]))
+    def __ne__(self, other):
+        return ~self.__eq__(other)
+
+    # ------------------------------------------------------------------
+    # Sorted-aware sweeps.
+    # All inputs are sorted by `on`, so per-element scans collapse from
+    # O(n*m) to O(n+m).
+    # ------------------------------------------------------------------
+    def intersect(self, other):
+        """Boolean vector: does each self[i] intersect any event in other? O(n+m)."""
+        n, m = len(self), len(other)
+        result = np.zeros(n, dtype=bool)
+        if n == 0 or m == 0:
+            return result
+        self_ons, self_offs = self._unravel_events()
+        other_ons, other_offs = other._unravel_events()
+        j = 0
+        for i in range(n):
+            # Skip over events in `other` that end strictly before self[i] starts;
+            # they cannot intersect self[i] or any later self event (sorted by on).
+            while j < m and other_offs[j] < self_ons[i]:
+                j += 1
+            if j < m and other_ons[j] <= self_offs[i]:
+                result[i] = True
+        return result
+    def not_intersect(self, other):
+        """Boolean vector: ~intersect (semantic clarification of original)."""
+        return ~self.intersect(other)
+    def __and__(self, other):
+        """Pairwise intersection of two sorted Events. O(n+m+k)."""
+        n, m = len(self), len(other)
+        if n == 0 or m == 0:
+            return Events([])
         new_events = []
-        for curr_self in self:
-            for curr_other in other:
-                new_timestamp = curr_self & curr_other
-                if new_timestamp.exists():
-                    new_events.append(new_timestamp)
-        return Events(new_events)
-    def self_or(self):
-        """Merges all overlapping events within this Events object.
-        Avoids comparing an event with itself."""
-        if len(self) <= 1:
-            return Events(self.events.copy())
-            
-        new_events = []
-        i = 0
-        while i < len(self):
-            curr_event = self.events[i]
-            merged = curr_event
-            j = i + 1
-            
-            while j < len(self):
-                if merged.intersect(self.events[j]):
-                    # Merge the events if they intersect
-                    merged = (merged | self.events[j])[0]  # Take first event since or returns Events
-                    j += 1
-                else:
-                    # If no intersection found, we've merged all possible events
+        i = j = 0
+        a = self.events[i]
+        b = other.events[j]
+        while True:
+            on_max = a.on if a.on > b.on else b.on
+            off_min = a.off if a.off < b.off else b.off
+            if on_max <= off_min:
+                new_events.append(Event(on_max, off_min))
+            # Advance the interval that ends first; if tied, advance both safely.
+            if a.off < b.off:
+                i += 1
+                if i >= n:
                     break
-                    
-            new_events.append(merged)
-            i = j if j > i + 1 else i + 1
-            
-        return Events(new_events)
-    def __or__(self, other):
-        """Or operator that merges all overlapping events between two Events objects"""
-        if len(self) == 0:
-            return Events(other.events.copy())
-        if len(other) == 0:
-            return Events(self.events.copy())
-            
-        new_events = Events([])
-        i = 0  # Index for self
-        j = 0  # Index for other
-        
-        while i < len(self) or j < len(other):
-            if i >= len(self):
-                # Add remaining events from other
-                new_events.extend(other[j:])
-                break
-            if j >= len(other):
-                # Add remaining events from self
-                new_events.extend(self[i:])
-                break
-                
-            # Get current events to compare
-            curr_self = self[i]
-            curr_other = other[j]
-            
-            if curr_self.intersect(curr_other):
-                # If events intersect, collect all events that overlap with either
-                merged = curr_self | curr_other
-                merged = merged[0]  # Get the single merged event
-                
-                # Look ahead in self for more overlapping events
-                next_i = i + 1
-                while next_i < len(self) and merged.intersect(self[next_i]):
-                    merged = (merged | self[next_i])[0]
-                    next_i += 1
-                    
-                # Look ahead in other for more overlapping events
-                next_j = j + 1
-                while next_j < len(other) and merged.intersect(other[next_j]):
-                    merged = (merged | other[next_j])[0]
-                    next_j += 1
-                    
-                new_events.extend(merged)
-                i = next_i
-                j = next_j
+                a = self.events[i]
             else:
-                # If no intersection, add the earlier event and advance its index
-                if curr_self.on < curr_other.on:
-                    new_events.extend(curr_self)
-                    i += 1
-                else:
-                    new_events.extend(curr_other)
-                    j += 1
-                    
-        return new_events
+                j += 1
+                if j >= m:
+                    break
+                b = other.events[j]
+        return Events(new_events, _presorted=True)
+    def self_or(self):
+        """Merge all overlapping events within self. O(n) on sorted input."""
+        if len(self) <= 1:
+            return Events(list(self.events), _presorted=True)
+        new_events = []
+        cur_on = self.events[0].on
+        cur_off = self.events[0].off
+        for k in range(1, len(self)):
+            e = self.events[k]
+            if e.on <= cur_off:
+                if e.off > cur_off:
+                    cur_off = e.off
+            else:
+                new_events.append(Event(cur_on, cur_off))
+                cur_on, cur_off = e.on, e.off
+        new_events.append(Event(cur_on, cur_off))
+        return Events(new_events, _presorted=True)
+    def __or__(self, other):
+        """Union of two sorted Events with overlap merging. O(n+m)."""
+        if len(self) == 0:
+            return Events(list(other.events), _presorted=True)
+        if len(other) == 0:
+            return Events(list(self.events), _presorted=True)
+
+        # Merge two on-sorted lists in linear time.
+        n, m = len(self), len(other)
+        merged = [None] * (n + m)
+        i = j = k = 0
+        while i < n and j < m:
+            if self.events[i].on <= other.events[j].on:
+                merged[k] = self.events[i]; i += 1
+            else:
+                merged[k] = other.events[j]; j += 1
+            k += 1
+        while i < n:
+            merged[k] = self.events[i]; i += 1; k += 1
+        while j < m:
+            merged[k] = other.events[j]; j += 1; k += 1
+
+        # Single sweep to coalesce overlaps.
+        new_events = []
+        cur_on = merged[0].on
+        cur_off = merged[0].off
+        for idx in range(1, len(merged)):
+            e = merged[idx]
+            if e.on <= cur_off:
+                if e.off > cur_off:
+                    cur_off = e.off
+            else:
+                new_events.append(Event(cur_on, cur_off))
+                cur_on, cur_off = e.on, e.off
+        new_events.append(Event(cur_on, cur_off))
+        return Events(new_events, _presorted=True)
     def __xor__(self,other):
         """ or operator. This one is a bit tricky, we can have chained overlapers that all need to be merged together
          nlog(n^2) or n^3 or ? """
@@ -418,17 +415,31 @@ class Events():
         else:
             raise TypeError("Use contains_events() for checking multiple events")
     def contains_events(self, other):
-        """Returns boolean array indicating which events in other are contained in self (nlog(n))"""
+        """Boolean array of which events in `other` are contained in some event of self.
+
+        O(n+m) sweep. An event b is contained in some a iff there is an a with
+        a.on <= b.on and a.off >= b.off. Because self is sorted by `on`, we can
+        scan self forward as `b.on` increases (other is also sorted) and track
+        the maximum `off` among self events whose `on` <= current b.on. If that
+        max is >= b.off, b is contained.
+        """
         if not isinstance(other, Events):
             raise TypeError("contains_events() expects an Events object")
-        results = np.zeros(len(other), dtype=bool)
-        last_index = 0
-        for i, other_event in enumerate(other):
-            for j,self_event in enumerate(self[last_index:]):
-                if other_event in self_event:
-                    results[i] = True
-                    last_index+=j
-                    break
+        n, m = len(self), len(other)
+        results = np.zeros(m, dtype=bool)
+        if n == 0 or m == 0:
+            return results
+        j = 0
+        max_off = None
+        for i in range(m):
+            ob = other.events[i]
+            while j < n and self.events[j].on <= ob.on:
+                off = self.events[j].off
+                if max_off is None or off > max_off:
+                    max_off = off
+                j += 1
+            if max_off is not None and max_off >= ob.off:
+                results[i] = True
         return results
     def __invert__(self):
         ons,offs = self._unravel_events()
@@ -436,7 +447,7 @@ class Events():
             return Events([Event(None, None)])
         dtype = np.array(ons[0]).dtype
         # get bounds to handle non float types 
-        min_val, max_val = self._type_bounds.get(dtype, (np.NINF, np.inf))
+        min_val, max_val = self._type_bounds.get(dtype, (_NEG_INF, _POS_INF))
         # handle circumstances where min and max are extremes
         # allows e==~(~e)
         min_on = True if ons[0] == min_val else False
@@ -469,49 +480,54 @@ class Events():
         else:
             raise ValueError(f"other must be of type Events or Event, but got type {type(other)}")
     def _unravel_events(self):
-        if self.events:
-            ons = np.empty(len(self),dtype=type(self.events[0].on))
-            offs = np.empty_like(ons)
-            for it,timestamp in enumerate(self):
-                ons[it] = timestamp.on
-                offs[it] = timestamp.off
-            return ons, offs
-        else:
-            return None,None
+        if not self.events:
+            return None, None
+        # np.array infers correct dtype (preserves datetime64 unit, int width, etc.)
+        # in a single pass, replacing the per-element Python loop.
+        ons = np.array([e.on for e in self.events])
+        offs = np.array([e.off for e in self.events])
+        return ons, offs
     @classmethod
-    def from_arrays(cls,ons,offs):
-        Events._check_vectors(ons,offs)
-        events = []
-        for times in zip(ons,offs):
-            events.append(Event(times[0],times[1]))
-        Events._check_inputs(events)
-        return cls(events)
+    def from_arrays(cls, ons, offs):
+        Events._check_vectors(ons, offs)
+        ons = np.asarray(ons)
+        offs = np.asarray(offs)
+        # Vectorized validation: avoids the O(n) Python loop in
+        # _ons_are_sorted_same_dtype that re-builds numpy arrays.
+        if len(ons) > 1 and not np.all(ons[:-1] <= ons[1:]):
+            raise TypeError("All events must be sorted")
+        if len(ons) > 0 and np.any(ons > offs):
+            raise ValueError("on must be less than or equal to off")
+        events = [Event.__new__(Event) for _ in range(len(ons))]
+        for k in range(len(ons)):
+            e = events[k]
+            e.on = ons[k]
+            e.off = offs[k]
+        return cls(events, _presorted=True)
     def merge(self, threshold):
         ons, offs = self._unravel_events()
+        if ons is None or len(ons) == 0:
+            return Events([], _presorted=True)
+        if len(ons) == 1:
+            return Events.from_arrays(ons.copy(), offs.copy())
         merge_mask = (ons[1:] - offs[:-1]) < threshold
-        new_len = len(merge_mask) - np.sum(merge_mask) + 1
-        new_ons = np.empty(new_len)
-        new_offs = np.empty(new_len)
+        new_len = len(merge_mask) - int(np.sum(merge_mask)) + 1
+        # Preserve input dtype rather than defaulting to float64.
+        new_ons = np.empty(new_len, dtype=ons.dtype)
+        new_offs = np.empty(new_len, dtype=offs.dtype)
         new_ons[0] = ons[0]
         it = 0
-        
-        # Keep track of the current merged off time
         current_off = offs[0]
-        
         for i in range(len(merge_mask)):
             if merge_mask[i]:
-                # Update the current off time to the later of the two
-                current_off = offs[i+1]
+                if offs[i + 1] > current_off:
+                    current_off = offs[i + 1]
             else:
-                # No merge, save current segment and start new one
                 new_offs[it] = current_off
                 it += 1
-                new_ons[it] = ons[i+1]
-                current_off = offs[i+1]
-        
-        # Save the final off time
+                new_ons[it] = ons[i + 1]
+                current_off = offs[i + 1]
         new_offs[it] = current_off
-        
         return Events.from_arrays(new_ons, new_offs)
     def duration_filter(self,lower_bound=0,upper_bound=np.inf):
         return filter(Event._duration_filter(lower_bound,upper_bound),self.events)

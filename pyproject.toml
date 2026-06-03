@@ -1,11 +1,36 @@
 [build-system]
-requires = ["setuptools==68.2.2"]
+requires = ["setuptools>=68.2.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "eventlogic"
-version = "0.1.14"
+version = "0.2.0"
+description = "A lightweight library for performing logical operations on event-style or timestamp data."
+readme = "README.md"
+requires-python = ">=3.6"
+license = { text = "MIT" }
+authors = [
+    { name = "Clayton Barnes", email = "barnes.clayton@icloud.com" },
+]
+keywords = ["events", "intervals", "timestamps", "logic", "numpy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "numpy",
     'importlib-metadata; python_version>="3.6"',
 ]
+
+[project.urls]
+Homepage = "https://github.com/Claybarn/EventLogic"
+Repository = "https://github.com/Claybarn/EventLogic"
+Issues = "https://github.com/Claybarn/EventLogic/issues"
+
+[tool.setuptools]
+py-modules = ["eventlogic"]
